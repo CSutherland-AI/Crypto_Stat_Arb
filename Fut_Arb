@@ -12,9 +12,6 @@ import asyncio
 import websocket
 
 
-
-   
-
 def get_price(symbol):
     
     URL= 'https://ftx.com/api'
@@ -24,8 +21,6 @@ def get_price(symbol):
 
 
     return response['result']['price']
-#price or last?
-
 
 
 def lim_buy(symbol,size):
@@ -49,13 +44,6 @@ def lim_sell(symbol,size):
     print('Sell order placed for: {},{}'.format(size,symbol))
     return
      
-
-
-
-
-
-
-
 def mkt_buy(symbol,size):
 
     price=None
@@ -77,33 +65,19 @@ def mkt_sell(symbol,size):
 
 
 
-
-
-
-
 #ws=websocket, resp=websocket response, remember, websocket is connected to in execution loop and that ws variable is passed as
 #a parameter into this algo
-
-
 
 def perp_spot_arb(ws,future, spot, size, thresh):
 
     #Grab Future and spot prices
     Fut_price= get_price(future)
-    Spot_price= get_price(spot)
-
-    
-    
-    resp=json.loads(ws.recv())
-   
-    balthresh=33
-
-    
+    Spot_price= get_price(spot)  
+    resp=json.loads(ws.recv())  
+    balthresh=33    
 
     print("Fut_price is:", Fut_price)
     print("Spot_price is:", Spot_price)
-
-
     #continue only when you have a value for both
 
     if Fut_price==0 or Spot_price==0:
@@ -113,11 +87,7 @@ def perp_spot_arb(ws,future, spot, size, thresh):
     diff=Fut_price-Spot_price
     print(diff)
     bal=c.get_bal()
-    
-
-    #When response doesn't give a price for both, then just start over until it does 
-    
-    
+    #When response doesn't give a price for both, then just start over until it does    
 
     #create a negative and positive threshold
     if bal > balthresh:
@@ -138,15 +108,10 @@ def perp_spot_arb(ws,future, spot, size, thresh):
             except:
                 #print("no future long position")
                 pass
-
-
             mkt_sell(future,size)
 
             mkt_buy (spot,size)
             
-
-
-
         if diff < thresh*(-1):
             #Close reverse positon and open new one
             try:
@@ -154,7 +119,6 @@ def perp_spot_arb(ws,future, spot, size, thresh):
             except:
                 #print("no spot long position")
                 pass
-
             try:
                 c.close_short(future, size)
             except:
@@ -164,9 +128,7 @@ def perp_spot_arb(ws,future, spot, size, thresh):
 
             mkt_buy(future,size )
 
-            mkt_sell(spot,size)
-
-            
+            mkt_sell(spot,size)           
 
     sys.stdout.flush()
     #if within close zone close everything
@@ -205,9 +167,7 @@ def perp_spot_arb(ws,future, spot, size, thresh):
             pass
        
     sys.stdout.flush()
-    return
-
-               
+    return              
 
       
 
@@ -233,10 +193,7 @@ if __name__ == "__main__":
     ws.send(json.dumps({'op': 'subscribe', 'channel': 'ticker', 'market': future}))
     ws.send(json.dumps({'op': 'subscribe', 'channel': 'ticker', 'market': spot}))
 
-    while i<1000:    
-            
-
-       
+    while i<1000:          
                 print("Current Bal:", c.get_bal())
                 perp_spot_arb(ws,future, spot, size, thresh)
                 time.sleep(10)
