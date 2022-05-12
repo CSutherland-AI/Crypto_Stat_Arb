@@ -1,0 +1,277 @@
+    
+
+
+import requests
+import pandas as pd
+import time, json
+from time import sleep
+import FTX_Client
+import Theo
+import sys
+import asyncio
+import websocket
+
+
+
+   
+
+def get_price(symbol):
+    
+    URL= 'https://ftx.com/api'
+    r=requests.get(URL+'/markets/{}'.format(symbol))
+
+    response=r.json()
+
+
+    return response['result']['price']
+#price or last?
+
+
+
+def lim_buy(symbol,size):
+    symbol=symbol
+    price=Theo.get_bids(symbol)[0][0]
+    side='buy'
+    size=size
+
+    c.place_order(symbol, side, price, size)
+    print('Buy order placed for: {},{}'.format(size,symbol))
+
+
+    return
+     
+def lim_sell(symbol,size):
+    
+    price=Theo.get_asks(symbol)[0][0]
+    side='sell'
+    size=size
+    c.place_order(symbol, side, price, size)
+    print('Sell order placed for: {},{}'.format(size,symbol))
+    return
+     
+
+
+
+
+
+
+
+def mkt_buy(symbol,size):
+
+    price=None
+    side='buy'
+    response=c.place_mkt_order(symbol, side,price,size)
+    print(' mkt buy order placed for: {},{}'.format(size,symbol))
+   
+    return 
+
+def mkt_sell(symbol,size):
+
+    price=None
+    side='sell'
+    
+
+    response=c.place_mkt_order(symbol, side,price,size)
+    print(' mkt sell order placed for: {},{}'.format(size,symbol))    
+    return 
+
+
+
+
+
+
+
+#ws=websocket, resp=websocket response, remember, websocket is connected to in execution loop and that ws variable is passed as
+#a parameter into this algo
+
+
+
+def perp_spot_arb(ws,future, spot, size, thresh):
+
+    #Grab Future and spot prices
+    Fut_price= get_price(future)
+    Spot_price= get_price(spot)
+
+    
+    
+    resp=json.loads(ws.recv())
+   
+    balthresh=33
+
+    
+
+    print("Fut_price is:", Fut_price)
+    print("Spot_price is:", Spot_price)
+
+
+    #continue only when you have a value for both
+
+    if Fut_price==0 or Spot_price==0:
+        return  
+   
+    
+    diff=Fut_price-Spot_price
+    print(diff)
+    bal=c.get_bal()
+    
+
+    #When response doesn't give a price for both, then just start over until it does 
+    
+    
+
+    #create a negative and positive threshold
+    if bal > balthresh:
+
+        if diff>thresh:
+            #Close reverse positon and open new one
+            #Buy spot, Sell future
+
+            try:
+                c.close_short(spot, size)
+
+            except:
+                #print("no spot short position")
+                pass
+
+            try:
+                c.close_long(future, size)
+            except:
+                #print("no future long position")
+                pass
+
+
+            mkt_sell(future,size)
+
+            mkt_buy (spot,size)
+            
+
+
+
+        if diff < thresh*(-1):
+            #Close reverse positon and open new one
+            try:
+                c.close_long(spot,size)
+            except:
+                #print("no spot long position")
+                pass
+
+            try:
+                c.close_short(future, size)
+            except:
+                #print("no future short position")
+                pass
+
+
+            mkt_buy(future,size )
+
+            mkt_sell(spot,size)
+
+            
+
+    sys.stdout.flush()
+    #if within close zone close everything
+    
+   
+    if( (-1*thresh)< diff and diff < (thresh) ) or bal<balthresh:
+        print("inside close zone or lowbal")
+        #Close everything
+        try:
+            c.close_long(spot,size)
+           
+        except:
+            #print("no spot long position")
+            pass
+
+        try:
+            c.close_short(spot, size)
+           
+
+        except:
+            # print("no spot short position")
+            pass
+
+        try:
+            c.close_long(future, size)
+         
+        except:
+            # print("no future long position")
+            pass
+
+        try:
+            c.close_short(future, size)
+           
+        except:
+            #  print("no future short position")
+            pass
+       
+    sys.stdout.flush()
+    return
+
+               
+
+      
+
+if __name__ == "__main__":
+
+
+       #*********************************Execution***********************************************************
+    print("SPOT ARB")
+
+    spot='ALPHA/USD'
+
+    future='ALPHA-PERP'
+    #remember to change size when you change symbol
+    size=1
+    thresh=0.0008
+
+    i=0
+
+     #Establish websocket connection and subscribe to channels
+
+    ws = websocket.WebSocket()
+    ws.connect("wss://ftx.com/ws/")
+    ws.send(json.dumps({'op': 'subscribe', 'channel': 'ticker', 'market': future}))
+    ws.send(json.dumps({'op': 'subscribe', 'channel': 'ticker', 'market': spot}))
+
+    while i<1000:    
+            
+
+       
+                print("Current Bal:", c.get_bal())
+                perp_spot_arb(ws,future, spot, size, thresh)
+                time.sleep(10)
+                i+=1
+                print('\n')
+
+    try:
+        c.close_long(spot,size)
+        print("long spot close sent")
+    except:
+        print("no spot long position")
+
+    try:
+        c.close_short(spot, size)
+        print("short spot close sent")
+
+    except:
+        print("no spot short position")
+
+    try:
+        c.close_long(future, size)
+        print("long future close sent")
+    except:
+        print("no future long position")
+
+    try:
+        c.close_short(future, size)
+        print("short future close sent")
+    except:
+        print("no future short position")
+    pass
+    print('Done')
+
+
+        #use position counter to keep track of open positions and use counter state
+        #to determine if new positions can be opened
+
+
