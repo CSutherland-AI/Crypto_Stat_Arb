@@ -16,10 +16,7 @@ def get_price(symbol):
     
     URL= 'https://ftx.com/api'
     r=requests.get(URL+'/markets/{}'.format(symbol))
-
     response=r.json()
-
-
     return response['result']['price']
 
 
@@ -28,10 +25,8 @@ def lim_buy(symbol,size):
     price=Theo.get_bids(symbol)[0][0]
     side='buy'
     size=size
-
     c.place_order(symbol, side, price, size)
     print('Buy order placed for: {},{}'.format(size,symbol))
-
 
     return
      
@@ -57,10 +52,9 @@ def mkt_sell(symbol,size):
 
     price=None
     side='sell'
-    
-
     response=c.place_mkt_order(symbol, side,price,size)
-    print(' mkt sell order placed for: {},{}'.format(size,symbol))    
+    print(' mkt sell order placed for: {},{}'.format(size,symbol)) 
+    
     return 
 
 
@@ -75,11 +69,10 @@ def perp_spot_arb(ws,future, spot, size, thresh):
     Spot_price= get_price(spot)  
     resp=json.loads(ws.recv())  
     balthresh=33    
-
     print("Fut_price is:", Fut_price)
     print("Spot_price is:", Spot_price)
     #continue only when you have a value for both
-
+    
     if Fut_price==0 or Spot_price==0:
         return  
    
